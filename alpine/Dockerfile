@@ -2,13 +2,13 @@ FROM alpine:3.6
 LABEL maintainer="Kong Core Team <team-core@konghq.com>"
 
 ENV KONG_VERSION 1.1.2
-ENV KONG_SHA256 0d7509fa2ef653b4aba14a1a1fd20339bccb4f8d386429102c42b7af6d8b6bdb
+ENV KONG_SHA256 6b9f5ae87fc63202ef8bda5f34ebe7b66b9c13abfe7a067b5edab8a05a60a2ef
 
-RUN adduser -Su 1337 kong \
+RUN adduser -Su 1337 -g root kong  \
 	&& mkdir -p "/usr/local/kong" \
 	&& apk add --no-cache --virtual .build-deps wget tar ca-certificates \
 	&& apk add --no-cache libgcc openssl pcre perl tzdata curl libcap su-exec \
-	&& wget -O kong.tar.gz "https://bintray.com/kong/kong-alpine-tar/download_file?file_path=kong-$KONG_VERSION.apk.tar.gz" \
+	&& wget -O kong.tar.gz "https://bintray.com/kong/kong-community-edition-alpine-tar/download_file?file_path=kong-community-edition-$KONG_VERSION.apk.tar.gz" \
 	&& echo "$KONG_SHA256 *kong.tar.gz" | sha256sum -c - \
 	&& tar -xzf kong.tar.gz -C /tmp \
 	&& rm -f kong.tar.gz \
@@ -17,15 +17,25 @@ RUN adduser -Su 1337 kong \
 	&& cp -R /tmp/etc / \
 	&& rm -rf /tmp/etc \
 	&& apk del .build-deps \
-	&& chown -R kong:0 /usr/local/kong \
+	&& chown -R kong /usr/local/kong \
+	&& chgrp -R 0 /usr/local/kong \
 	&& chmod -R g=u /usr/local/kong
 
+# for transparent proxy usage enable setcup for kong
+RUN chown kong /usr/local/openresty/nginx/sbin/ \
+	&& cp /usr/local/openresty/nginx/sbin/nginx /usr/local/openresty/nginx/sbin/nginx-transparent \
+	&& cp /usr/local/openresty/nginx/sbin/nginx /usr/local/openresty/nginx/sbin/nginx-non-transparent \
+	&& rm /usr/local/openresty/nginx/sbin/nginx \
+    && setcap cap_net_raw=+ep /usr/local/openresty/nginx/sbin/nginx-transparent
+
 COPY docker-entrypoint.sh /docker-entrypoint.sh
+
+USER kong
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
 EXPOSE 8000 8443 8001 8444
 
-STOPSIGNAL SIGQUIT
+STOPSIGNAL SIGTERM
 
 CMD ["kong", "docker-start"]
