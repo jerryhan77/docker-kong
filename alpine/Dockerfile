@@ -16,6 +16,8 @@ RUN adduser -Su 1337 -g root kong  \
 	&& rm -rf /tmp/usr \
 	&& cp -R /tmp/etc / \
 	&& rm -rf /tmp/etc \
+	&& luarocks install kong-oidc \
+	&& luarocks install kong-oidc-auth \
 	&& apk del .build-deps \
 	&& chown -R kong /usr/local/kong \
 	&& chgrp -R 0 /usr/local/kong \
