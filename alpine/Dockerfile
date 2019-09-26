@@ -1,14 +1,14 @@
 FROM alpine:3.6
 LABEL maintainer="Kong Core Team <team-core@konghq.com>"
 
-ENV KONG_VERSION 1.1.2
-ENV KONG_SHA256 6b9f5ae87fc63202ef8bda5f34ebe7b66b9c13abfe7a067b5edab8a05a60a2ef
+ENV KONG_VERSION 1.3.0
+ENV KONG_SHA256 566f2a8009cbd7eebd32843c2f03c8d5f736139110988dc12dee161046428112
 
 RUN adduser -Su 1337 -g root kong  \
 	&& mkdir -p "/usr/local/kong" \
 	&& apk add --no-cache --virtual .build-deps wget tar ca-certificates \
 	&& apk add --no-cache git libgcc openssl pcre perl tzdata curl libcap su-exec \
-	&& wget -O kong.tar.gz "https://bintray.com/kong/kong-community-edition-alpine-tar/download_file?file_path=kong-community-edition-$KONG_VERSION.apk.tar.gz" \
+	&& wget -O kong.tar.gz "https://bintray.com/kong/kong-alpine-tar/download_file?file_path=kong-$KONG_VERSION.apk.tar.gz" \
 	&& echo "$KONG_SHA256 *kong.tar.gz" | sha256sum -c - \
 	&& tar -xzf kong.tar.gz -C /tmp \
 	&& rm -f kong.tar.gz \
