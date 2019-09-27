@@ -7,7 +7,7 @@ ENV KONG_SHA256 566f2a8009cbd7eebd32843c2f03c8d5f736139110988dc12dee161046428112
 RUN adduser -Su 1337 -g root kong  \
 	&& mkdir -p "/usr/local/kong" \
 	&& apk add --no-cache --virtual .build-deps wget tar ca-certificates \
-	&& apk add --no-cache git libgcc openssl pcre perl tzdata curl libcap su-exec \
+	&& apk add --no-cache git libgcc openssl pcre perl tzdata curl libcap su-exec unzip \
 	&& wget -O kong.tar.gz "https://bintray.com/kong/kong-alpine-tar/download_file?file_path=kong-$KONG_VERSION.apk.tar.gz" \
 	&& echo "$KONG_SHA256 *kong.tar.gz" | sha256sum -c - \
 	&& tar -xzf kong.tar.gz -C /tmp \
