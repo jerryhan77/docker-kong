@@ -1,12 +1,12 @@
 FROM alpine:latest
 LABEL maintainer="Kong Core Team <team-core@konghq.com>"
 
-ENV KONG_VERSION 1.4.2
-ENV KONG_SHA256 edf917d956d697abb70f5f3f630d420ee699c6428bf953221cd8548eda490dcf
+ENV KONG_VERSION 2.0.0rc1
+ENV KONG_SHA256 d4914705ea5a02db71e8ab7376d046ea5b05c52bb2fc17ee977c11f710673dc2
 
 RUN adduser -Su 1337 -g root kong  \
 	&& mkdir -p "/usr/local/kong" \
-	&& apk add --no-cache --virtual .build-deps wget tar ca-certificates \
+	&& apk add --no-cache --virtual .build-deps curl wget tar ca-certificates \
 	&& apk add --no-cache git libgcc openssl pcre perl tzdata curl libcap su-exec unzip \
 	&& wget -O kong.tar.gz "https://bintray.com/kong/kong-alpine-tar/download_file?file_path=kong-$KONG_VERSION.amd64.apk.tar.gz" \
 	&& echo "$KONG_SHA256 *kong.tar.gz" | sha256sum -c - \
@@ -20,8 +20,7 @@ RUN adduser -Su 1337 -g root kong  \
 	&& luarocks install kong-oidc-auth \
 	&& luarocks install kong-plugin-jwt-keycloak \
 	&& apk del .build-deps \
-	&& chown -R kong /usr/local/kong \
-	&& chgrp -R 0 /usr/local/kong \
+	&& chown -R kong:0 /usr/local/kong \
 	&& chmod -R g=u /usr/local/kong
 
 # for transparent proxy usage enable setcup for kong
