@@ -1,8 +1,8 @@
-FROM alpine:3.6
+FROM alpine:latest
 LABEL maintainer="Kong Core Team <team-core@konghq.com>"
 
-ENV KONG_VERSION 1.4.0
-ENV KONG_SHA256 e31080487cfb8262a839c19d5e8fdb18b7686e9e4cc594803eaa565e0b34ff7a
+ENV KONG_VERSION 1.4.2
+ENV KONG_SHA256 edf917d956d697abb70f5f3f630d420ee699c6428bf953221cd8548eda490dcf
 
 RUN adduser -Su 1337 -g root kong  \
 	&& mkdir -p "/usr/local/kong" \
