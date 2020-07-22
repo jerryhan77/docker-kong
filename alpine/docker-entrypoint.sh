@@ -1,41 +1,49 @@
-#!/bin/sh
-set -e
+#!/usr/bin/env bash
+set -Eeo pipefail
+
+# usage: file_env VAR [DEFAULT]
+#    ie: file_env 'XYZ_DB_PASSWORD' 'example'
+# (will allow for "$XYZ_DB_PASSWORD_FILE" to fill in the value of
+#  "$XYZ_DB_PASSWORD" from a file, especially for Docker's secrets feature)
+file_env() {
+	local var="$1"
+	local fileVar="${var}_FILE"
+	local def="${2:-}"
+	# Do not continue if _FILE env is not set
+	if ! [ "${!fileVar:-}" ]; then
+		return
+	elif [ "${!var:-}" ] && [ "${!fileVar:-}" ]; then
+		echo >&2 "error: both $var and $fileVar are set (but are exclusive)"
+		exit 1
+	fi
+	local val="$def"
+	if [ "${!var:-}" ]; then
+		val="${!var}"
+	elif [ "${!fileVar:-}" ]; then
+		val="$(< "${!fileVar}")"
+	fi
+	export "$var"="$val"
+	unset "$fileVar"
+}
 
 export KONG_NGINX_DAEMON=off
 
-has_transparent() {
-  echo "$1" | grep -E "[^\s,]+\s+transparent\b" >/dev/null
-}
-
 if [[ "$1" == "kong" ]]; then
   PREFIX=${KONG_PREFIX:=/usr/local/kong}
+  file_env KONG_PG_PASSWORD
+  file_env KONG_PG_USER
+  file_env KONG_PG_DATABASE
 
   if [[ "$2" == "docker-start" ]]; then
-    shift 2
+    kong prepare -p "$PREFIX" "$@"
 
-    if [ -f "/usr/local/openresty/nginx/sbin/nginx" ]
-    then
-      rm /usr/local/openresty/nginx/sbin/nginx
-    fi 
+    ln -sf /dev/stdout $PREFIX/logs/access.log
+    ln -sf /dev/stdout $PREFIX/logs/admin_access.log
+    ln -sf /dev/stderr $PREFIX/logs/error.log
 
-    if [ ! -z ${SET_CAP_NET_RAW} ] \
-        || has_transparent "$KONG_STREAM_LISTEN" \
-        || has_transparent "$KONG_PROXY_LISTEN" \
-        || has_transparent "$KONG_ADMIN_LISTEN";
-    then
-      ln -s /usr/local/openresty/nginx/sbin/nginx-transparent /usr/local/openresty/nginx/sbin/nginx
-      kong prepare -p "$PREFIX" "$@"
-      exec /usr/local/openresty/nginx/sbin/nginx \
+    exec /usr/local/openresty/nginx/sbin/nginx \
       -p "$PREFIX" \
       -c nginx.conf
-    else
-      ln -s /usr/local/openresty/nginx/sbin/nginx-non-transparent /usr/local/openresty/nginx/sbin/nginx
-      ls -al /usr/local/openresty/nginx/sbin/
-      kong prepare -p "$PREFIX" "$@"
-      exec /usr/local/openresty/nginx/sbin/nginx \
-      -p "$PREFIX" \
-      -c nginx.conf
-    fi
   fi
 fi
 

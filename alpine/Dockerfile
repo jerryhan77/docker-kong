@@ -1,34 +1,43 @@
-FROM alpine:latest
-LABEL maintainer="Kong Core Team <team-core@konghq.com>"
+FROM alpine:3.11
 
-ENV KONG_VERSION 2.1.0
-ENV KONG_SHA256 8e5322ba57591e75e6c0d2cfe602cc104467be2336a4075c80831fb53cbb1f78
+LABEL maintainer="Kong <support@konghq.com>"
 
-RUN adduser -Su 1337 -g root kong  \
-	&& mkdir -p "/usr/local/kong" \
-	&& apk add --no-cache --virtual .build-deps curl wget tar ca-certificates \
-	&& apk add --no-cache git libgcc openssl pcre perl tzdata curl libcap su-exec unzip libstdc++ libcap zip bash zlib zlib-dev \
-	&& wget -O kong.tar.gz "https://bintray.com/kong/kong-alpine-tar/download_file?file_path=kong-$KONG_VERSION.amd64.apk.tar.gz" \
-	&& echo "$KONG_SHA256 *kong.tar.gz" | sha256sum -c - \
-	&& tar -xzf kong.tar.gz -C /tmp \
-	&& rm -f kong.tar.gz \
-	&& cp -R /tmp/usr / \
-	&& rm -rf /tmp/usr \
-	&& cp -R /tmp/etc / \
-	&& rm -rf /tmp/etc \
-	&& luarocks install kong-oidc \
-	&& luarocks install kong-oidc-auth \
-	&& luarocks install kong-plugin-jwt-keycloak \
-	&& apk del .build-deps \
-	&& chown -R kong:0 /usr/local/kong \
-	&& chmod -R g=u /usr/local/kong
+ARG ASSET=ce
+ENV ASSET $ASSET
 
-# for transparent proxy usage enable setcup for kong
-RUN chown kong /usr/local/openresty/nginx/sbin/ \
-	&& cp /usr/local/openresty/nginx/sbin/nginx /usr/local/openresty/nginx/sbin/nginx-transparent \
-	&& cp /usr/local/openresty/nginx/sbin/nginx /usr/local/openresty/nginx/sbin/nginx-non-transparent \
-	&& rm /usr/local/openresty/nginx/sbin/nginx \
-    && setcap cap_net_raw=+ep /usr/local/openresty/nginx/sbin/nginx-transparent
+ARG EE_PORTS
+
+COPY kong.tar.gz /tmp/kong.tar.gz
+
+ARG KONG_VERSION=2.1.0
+ENV KONG_VERSION $KONG_VERSION
+
+ARG KONG_SHA256="8e5322ba57591e75e6c0d2cfe602cc104467be2336a4075c80831fb53cbb1f78"
+
+RUN set -ex; \
+    if [ "$ASSET" = "ce" ] ; then \
+        apk add --no-cache --virtual .build-deps curl wget tar ca-certificates && \
+        curl -fL "https://bintray.com/kong/kong-alpine-tar/download_file?file_path=kong-$KONG_VERSION.amd64.apk.tar.gz" -o /tmp/kong.tar.gz && \
+        echo "$KONG_SHA256  /tmp/kong.tar.gz" | sha256sum -c -; \
+        apk del .build-deps; \
+    fi; \
+    mkdir /kong; \
+	tar -C /kong -xzf /tmp/kong.tar.gz && \
+	mv /kong/usr/local/* /usr/local && \
+	mv /kong/etc/* /etc && \
+	rm -rf /kong && \
+	apk add --no-cache libstdc++ libgcc openssl pcre perl tzdata libcap zip bash zlib zlib-dev git ca-certificates unzip && \
+	adduser -S kong && \
+	mkdir -p "/usr/local/kong" && \
+        luarocks install kong-oidc && \
+        luarocks install kong-plugin-jwt-keycloak && \
+	chown -R kong:0 /usr/local/kong && \
+	chown kong:0 /usr/local/bin/kong && \
+	chmod -R g=u /usr/local/kong && \
+	rm -rf /tmp/kong.tar.gz && \
+  if [ "$ASSET" = "ce" ] ; then \
+    kong version ; \
+  fi;
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 
@@ -36,8 +45,8 @@ USER kong
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
-EXPOSE 8000 8443 8001 8444
+EXPOSE 8000 8443 8001 8444 $EE_PORTS
 
-STOPSIGNAL SIGTERM
+STOPSIGNAL SIGQUIT
 
 CMD ["kong", "docker-start"]
